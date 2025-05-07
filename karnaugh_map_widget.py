@@ -488,26 +488,29 @@ class KarnaughMapWidget(QWidget):
         
         # Find which groups (prime implicants) this cell belongs to
         groups = []
-        for i, (cells, term) in enumerate(self.groupings):
+        # Unpack all three items: cells, term, and pi_pattern
+        for i, (cells, term, pi_pattern) in enumerate(self.groupings):
+            # Check if the *coordinates* (row, col) are in the list of cells for this group
             if (row, col) in cells:
-                is_essential = any(pi in self.k_map.essential_prime_implicants for pi in [term])
+                # Check if the pattern corresponds to an essential PI
+                is_essential = pi_pattern in self.k_map.essential_prime_implicants
                 groups.append((i, term, is_essential))
                 
         # Show information about the cell and its groups
         html = f"<h3>Cell ({row}, {col})</h3>"
         html += f"<p>Minterm index: {idx}</p>"
         
-        # Fix the escaped apostrophe in the f-string
+        # Display the cell's value
         value_text = "1" if idx in self.minterms else "0" if idx not in self.dont_cares else "X (Don't Care)"
         html += f"<p>Value: {value_text}</p>"
         
         if groups:
-            html += "<h4>Prime Implicants:</h4><ul>"
+            html += "<h4>Prime Implicants Covering This Cell:</h4><ul>"
             for group_id, term, is_essential in groups:
                 html += f"<li>{term} {'(Essential)' if is_essential else ''}</li>"
             html += "</ul>"
         else:
-            html += "<p>Not covered by any prime implicant.</p>"
+            html += "<p>Not covered by any displayed prime implicant.</p>"
             
         self.results_text.setHtml(html)
                 
@@ -559,76 +562,41 @@ class KarnaughMapWidget(QWidget):
             return (row << 3) | col | ((row // 2) << 4)
         
     def update_display(self):
-        """Update the K-map display based on current options."""
+        """Update the K-map display based on current options and groupings."""
         if not self.k_map or not self.cells:
             return
-            
-        # Clear all group assignments
+
         for row in self.cells:
             for cell in row:
                 if cell:
                     cell.clear_groups()
-        
-        # Get options
+
         show_essential = self.show_essential_cb.isChecked()
         show_all = self.show_all_pi_cb.isChecked()
-        
-        # Create mapping of prime implicants to groups
-        pi_to_groups = {}
-        
-        # Get the prime implicants and essential prime implicants
-        prime_implicants = self.k_map.prime_implicants
-        essential_prime_implicants = self.k_map.essential_prime_implicants
-        
-        # Debug output
-        print(f"Displaying K-map - Prime implicants: {prime_implicants}")
-        print(f"Essential prime implicants: {essential_prime_implicants}")
-        
-        # Assign cells to groups
-        for i, (cell_coords, term) in enumerate(self.groupings):
-            # Determine if this is an essential prime implicant
-            is_essential = False
-            
-            # Extract the pattern parts from the term
-            term_parts = term.split(' & ')
-            pattern = []
-            
-            for var in self.variables:
-                if var in term_parts:
-                    pattern.append('1')
-                elif f"~{var}" in term_parts:
-                    pattern.append('0')
-                else:
-                    pattern.append('-')
-            
-            pattern_str = ''.join(pattern)
-            
-            # Check if this pattern corresponds to an essential prime implicant
-            for pi in essential_prime_implicants:
-                is_match = True
-                for i, bit in enumerate(pi):
-                    if bit != '-' and pattern[i] != '-' and bit != pattern[i]:
-                        is_match = False
-                        break
-                if is_match:
-                    is_essential = True
-                    break
-            
-            # Skip if we're only showing essentials and this isn't essential
-            if not show_all and not is_essential:
-                continue
-                
-            # Skip if we're not showing essentials and this is essential
-            if not show_essential and is_essential:
-                continue
-                
-            # Add the group to each cell
-            for r, c in cell_coords:
-                if 0 <= r < len(self.cells) and 0 <= c < len(self.cells[0]):
-                    cell = self.cells[r][c]
-                    if cell:
-                        cell.add_group(i, is_essential)
-        
+        essential_pi_patterns = set(self.k_map.essential_prime_implicants)
+
+        print(f"Displaying K-map - Essential patterns: {essential_pi_patterns}")
+
+        # self.groupings now contains tuples: ([(r,c), ...], term_str, pi_pattern_str)
+        for group_index, (cell_coords, term, pi_pattern) in enumerate(self.groupings):
+            is_essential = pi_pattern in essential_pi_patterns
+
+            print(f"Group {group_index}: Term={term}, Pattern={pi_pattern}, Essential={is_essential}")
+
+            should_display_group = False
+            if show_all:
+                if (is_essential and show_essential) or (not is_essential):
+                    should_display_group = True
+            elif show_essential and is_essential:
+                should_display_group = True
+
+            if should_display_group:
+                for r, c in cell_coords:
+                    if 0 <= r < len(self.cells) and 0 <= c < len(self.cells[0]):
+                        cell = self.cells[r][c]
+                        if cell:
+                            cell.add_group(group_index, is_essential)
+
     def _update_results(self):
         """Update the results text with simplified expressions."""
         if not self.k_map:

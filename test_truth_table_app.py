@@ -70,6 +70,12 @@ class TestTruthTableModel:
         # Check truth values were generated
         assert len(truth_table_model.truth_values) == 4
         assert len(truth_table_model.results) == 4
+        
+        # Verify the truth table for "p and q"
+        # p=0,q=0 -> 0; p=0,q=1 -> 0; p=1,q=0 -> 0; p=1,q=1 -> 1
+        expected_results = [False, False, False, True]
+        for row, expected in enumerate(expected_results):
+            assert truth_table_model.results[row][0] == expected
     
     def test_update_variables(self, truth_table_model):
         """Test updating variable names"""
@@ -95,6 +101,14 @@ class TestTruthTableModel:
         # Check results were recalculated
         assert len(truth_table_model.results) == 4  # Still 4 rows with 2 variables
         assert len(truth_table_model.results[0]) == 2  # 2 results per row (for 2 expressions)
+        
+        # Verify logic correctness for "p and q" and "p or q"
+        # Rows correspond to: p=0,q=0; p=0,q=1; p=1,q=0; p=1,q=1
+        expected_and = [False, False, False, True]
+        expected_or = [False, True, True, True]
+        for row in range(4):
+            assert truth_table_model.results[row][0] == expected_and[row]
+            assert truth_table_model.results[row][1] == expected_or[row]
     
     def test_expression_colors(self, truth_table_model):
         """Test setting expression colors"""
@@ -225,7 +239,7 @@ class TestTruthTableApp:
         initial_exprs = truth_table_app.table_model.expressions
         
         # Update expressions
-        new_exprs = ["p or q", "p and q", "p xor q"]
+        new_exprs = ["p or q", "p and q", "p ^ q"]
         truth_table_app.update_expressions(new_exprs)
         
         # Check that model was updated

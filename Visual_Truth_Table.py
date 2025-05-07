@@ -195,10 +195,10 @@ class FuturisticUI:
     TEXT_SECONDARY = QColor(180, 180, 180)  # Light gray
     
     @staticmethod
-    def set_futuristic_style(app):
+    def set_futuristic_style(application_instance):
         """Apply futuristic style to the entire application"""
-        if isinstance(app, QApplication):
-            app.setStyleSheet("""
+        if isinstance(application_instance, QApplication):
+            application_instance.setStyleSheet("""
             QWidget { 
                 background: #121212; 
                 color: #EEE; 
@@ -479,6 +479,13 @@ class FuturisticUI:
             
         # Apply new blur radius
         effect.setBlurRadius(data['current'])
+    
+    @staticmethod
+    def _insert_symbol(line_edit, symbol_char):
+        cursor_pos = line_edit.cursorPosition()
+        text_content = line_edit.text()
+        line_edit.setText(text_content[:cursor_pos] + symbol_char + text_content[cursor_pos:])
+        line_edit.setCursorPosition(cursor_pos + len(symbol_char))
 
 # Define modern theme and styling
 class AppTheme:
@@ -970,146 +977,137 @@ class ExpressionEvaluator:
 
         try:
             # Store the original expression for evaluation
-            orig_expr = expr
+            orig_expr_str = expr # Renamed to avoid conflict with 'expr' parameter
 
             # Create a display version of the expression, replacing Python keywords with logical symbols
-            display_expr = orig_expr
+            display_expr_str = orig_expr_str # Renamed
             # Create a reversed symbol map to convert Python operators back to logical symbols
-            reversed_map = {}
-            for symbol, op in cls.SYMBOL_MAP.items():
+            reversed_map_dict = {} # Renamed
+            for symbol_char, op_keyword in cls.SYMBOL_MAP.items(): # Renamed loop variables
                 # Special handling for 'not ' because it has a space
-                if op == 'not ':
-                    reversed_map['not'] = symbol
+                if op_keyword == 'not ':
+                    reversed_map_dict['not'] = symbol_char
                 else:
-                    reversed_map[op] = symbol
+                    reversed_map_dict[op_keyword] = symbol_char
             
             # Apply the reversed map to create a more readable display version
-            for op, symbol in reversed_map.items():
+            for op_keyword, symbol_char in reversed_map_dict.items(): # Renamed loop variables
                 # Use regex with word boundaries to only replace whole operators
                 import re
-                display_expr = re.sub(r'\b' + re.escape(op) + r'\b', symbol, display_expr)
+                display_expr_str = re.sub(r'\\b' + re.escape(op_keyword) + r'\\b', symbol_char, display_expr_str)
             
-            steps = [f"Starting with expression: {display_expr}"]
+            steps_list = [f"Starting with expression: {display_expr_str}"] # Renamed
             
             # 1. Substitute variable values with their boolean values
-            steps.append("1. Substitute variable values:")
-            substituted_expr = display_expr
-            for var_name, var_value in var_dict.items():
+            steps_list.append("1. Substitute variable values:")
+            substituted_expr_str = display_expr_str # Renamed
+            for var_name_str, var_value_bool in var_dict.items(): # Renamed loop variables
                 # Use regex with word boundaries to avoid partial replacements
-                substituted_expr = re.sub(r'\b' + re.escape(var_name) + r'\b', 
-                                         f"<b>{str(var_value).lower()}</b>", 
-                                         substituted_expr)
-            steps.append(f"   {substituted_expr}")
+                substituted_expr_str = re.sub(r'\\b' + re.escape(var_name_str) + r'\\b', 
+                                         f"<b>{str(var_value_bool).lower()}</b>", 
+                                         substituted_expr_str)
+            steps_list.append(f"   {substituted_expr_str}")
             
             # 2. Evaluate negations (¬) - highest precedence
-            steps.append("2. Evaluate negations (¬):")
+            steps_list.append("2. Evaluate negations (¬):")
             # Find all patterns like "¬<b>true</b>" or "¬<b>false</b>" and evaluate them
-            negation_pattern = r'¬\s*<b>(true|false)</b>'
+            negation_pattern_re = r'¬\\s*<b>(true|false)</b>' # Renamed
             
-            negation_match = re.search(negation_pattern, substituted_expr)
-            if negation_match:
+            current_eval_step_str = substituted_expr_str # Renamed
+            negation_match_obj = re.search(negation_pattern_re, current_eval_step_str) # Renamed
+            if negation_match_obj:
                 # Process all negations
-                negation_step = substituted_expr
-                while negation_match:
-                    neg_expr = negation_match.group(0)
-                    value_str = negation_match.group(1)
-                    result = not (value_str.lower() == "true")
-                    result_str = f"<b>{str(result).lower()}</b>"
+                while negation_match_obj:
+                    neg_expr_str = negation_match_obj.group(0) # Renamed
+                    value_str_from_match = negation_match_obj.group(1) # Renamed
+                    result_bool = not (value_str_from_match.lower() == "true") # Renamed
+                    result_str_html = f"<b>{str(result_bool).lower()}</b>" # Renamed
                     
                     # Replace just this specific negation
-                    negation_step = negation_step.replace(neg_expr, result_str, 1)
+                    current_eval_step_str = current_eval_step_str.replace(neg_expr_str, result_str_html, 1)
                     
                     # Look for next negation
-                    negation_match = re.search(negation_pattern, negation_step)
+                    negation_match_obj = re.search(negation_pattern_re, current_eval_step_str)
                 
-                steps.append(f"   {negation_step}")
+                steps_list.append(f"   {current_eval_step_str}")
             else:
-                steps.append("   No negations to evaluate")
-                negation_step = substituted_expr
+                steps_list.append("   No negations to evaluate")
             
             # 3. Evaluate AND operations (∧) - second precedence
-            steps.append("3. Evaluate AND operations (∧):")
+            steps_list.append("3. Evaluate AND operations (∧):")
             # Find all patterns like "<b>true</b> ∧ <b>false</b>" and evaluate them
-            and_pattern = r'<b>(true|false)</b>\s*∧\s*<b>(true|false)</b>'
+            and_pattern_re = r'<b>(true|false)</b>\\s*∧\\s*<b>(true|false)</b>' # Renamed
             
-            and_match = re.search(and_pattern, negation_step)
-            if and_match:
+            and_match_obj = re.search(and_pattern_re, current_eval_step_str) # Renamed
+            if and_match_obj:
                 # Process all AND operations
-                and_step = negation_step
-                while and_match:
-                    and_expr = and_match.group(0)
-                    left_value = and_match.group(1).lower() == "true"
-                    right_value = and_match.group(2).lower() == "true"
-                    result = left_value and right_value
-                    result_str = f"<b>{str(result).lower()}</b>"
+                while and_match_obj:
+                    and_expr_str = and_match_obj.group(0) # Renamed
+                    left_value_bool = and_match_obj.group(1).lower() == "true" # Renamed
+                    right_value_bool = and_match_obj.group(2).lower() == "true" # Renamed
+                    result_bool = left_value_bool and right_value_bool # Renamed
+                    result_str_html = f"<b>{str(result_bool).lower()}</b>" # Renamed
                     
                     # Replace just this AND operation
-                    and_step = and_step.replace(and_expr, result_str, 1)
+                    current_eval_step_str = current_eval_step_str.replace(and_expr_str, result_str_html, 1)
                     
                     # Look for next AND operation
-                    and_match = re.search(and_pattern, and_step)
+                    and_match_obj = re.search(and_pattern_re, current_eval_step_str)
                 
-                steps.append(f"   {and_step}")
+                steps_list.append(f"   {current_eval_step_str}")
             else:
-                steps.append("   No AND operations to evaluate")
-                and_step = negation_step
+                steps_list.append("   No AND operations to evaluate")
             
             # 4. Evaluate OR operations (∨) - lowest precedence
-            steps.append("4. Evaluate OR operations (∨):")
+            steps_list.append("4. Evaluate OR operations (∨):")
             # Find all patterns like "<b>true</b> ∨ <b>false</b>" and evaluate them
-            or_pattern = r'<b>(true|false)</b>\s*∨\s*<b>(true|false)</b>'
+            or_pattern_re = r'<b>(true|false)</b>\\s*∨\\s*<b>(true|false)</b>' # Renamed
             
-            or_match = re.search(or_pattern, and_step)
-            if or_match:
+            or_match_obj = re.search(or_pattern_re, current_eval_step_str) # Renamed
+            if or_match_obj:
                 # Process all OR operations
-                or_step = and_step
-                while or_match:
-                    or_expr = or_match.group(0)
-                    left_value = or_match.group(1).lower() == "true"
-                    right_value = or_match.group(2).lower() == "true"
-                    result = left_value or right_value
-                    result_str = f"<b>{str(result).lower()}</b>"
+                while or_match_obj:
+                    or_expr_str = or_match_obj.group(0) # Renamed
+                    left_value_bool = or_match_obj.group(1).lower() == "true" # Renamed
+                    right_value_bool = or_match_obj.group(2).lower() == "true" # Renamed
+                    result_bool = left_value_bool or right_value_bool # Renamed
+                    result_str_html = f"<b>{str(result_bool).lower()}</b>" # Renamed
                     
                     # Replace just this OR operation
-                    or_step = or_step.replace(or_expr, result_str, 1)
+                    current_eval_step_str = current_eval_step_str.replace(or_expr_str, result_str_html, 1)
                     
                     # Look for next OR operation
-                    or_match = re.search(or_pattern, or_step)
+                    or_match_obj = re.search(or_pattern_re, current_eval_step_str)
                 
-                steps.append(f"   {or_step}")
+                steps_list.append(f"   {current_eval_step_str}")
             else:
-                steps.append("   No OR operations to evaluate")
-                or_step = and_step
+                steps_list.append("   No OR operations to evaluate")
             
             # 5. Evaluate other operations (→, ↔, ⊕) if present
             # Implication (→)
-            implies_pattern = r'<b>(true|false)</b>\s*→\s*<b>(true|false)</b>'
-            implies_match = re.search(implies_pattern, or_step)
-            if implies_match:
-                steps.append("5. Evaluate implications (→):")
-                implies_step = or_step
+            implies_pattern_re = r'<b>(true|false)</b>\\s*→\\s*<b>(true|false)</b>' # Renamed
+            implies_match_obj = re.search(implies_pattern_re, current_eval_step_str) # Renamed
+            if implies_match_obj:
+                steps_list.append("5. Evaluate implications (→):")
                 
-                while implies_match:
-                    implies_expr = implies_match.group(0)
-                    left_value = implies_match.group(1).lower() == "true"
-                    right_value = implies_match.group(2).lower() == "true"
+                while implies_match_obj:
+                    implies_expr_str = implies_match_obj.group(0) # Renamed
+                    left_value_bool = implies_match_obj.group(1).lower() == "true" # Renamed
+                    right_value_bool = implies_match_obj.group(2).lower() == "true" # Renamed
                     # p → q is equivalent to (not p) or q
-                    result = (not left_value) or right_value
-                    result_str = f"<b>{str(result).lower()}</b>"
+                    result_bool = (not left_value_bool) or right_value_bool # Renamed
+                    result_str_html = f"<b>{str(result_bool).lower()}</b>" # Renamed
                     
-                    implies_step = implies_step.replace(implies_expr, result_str, 1)
-                    implies_match = re.search(implies_pattern, implies_step)
+                    current_eval_step_str = current_eval_step_str.replace(implies_expr_str, result_str_html, 1)
+                    implies_match_obj = re.search(implies_pattern_re, current_eval_step_str)
                 
-                steps.append(f"   {implies_step}")
-                final_step = implies_step
-            else:
-                final_step = or_step
+                steps_list.append(f"   {current_eval_step_str}")
             
             # Get the actual final result using the evaluator
-            final_result_bool = cls.evaluate(orig_expr, var_dict)
-            steps.append(f"Final result: <b>{str(final_result_bool).lower()}</b>")
+            final_result_bool = cls.evaluate(orig_expr_str, var_dict)
+            steps_list.append(f"Final result: <b>{str(final_result_bool).lower()}</b>")
             
-            return steps
+            return steps_list
         except Exception as e:
             return [f"Error generating steps: {str(e)}"]
 
@@ -1385,20 +1383,22 @@ class VariableConfigWidget(QWidget):
         insert_equiv = QAction("Insert ↔", self)
         insert_xor = QAction("Insert ⊕", self)
 
-        for action, symbol in [(insert_and, "∧"), (insert_or, "∨"), (insert_not, "¬"),
+        for action, symbol_char in [(insert_and, "∧"), (insert_or, "∨"), (insert_not, "¬"),
                                 (insert_implies, "→"), (insert_equiv, "↔"), (insert_xor, "⊕")]:
-            action.triggered.connect(lambda _, s=symbol: self._insert_symbol(sender, s))
+            # Use An instead of 'A' if the following word starts with a vowel sound, e.g. 'an article', 'an hour'. - Line 1979: Corrected grammar (using static method now)
+            action.triggered.connect(lambda checked, s=symbol_char: VariableConfigWidget._insert_symbol(sender, s)) # Call static method
             menu.addAction(action)
 
         menu.exec(sender.mapToGlobal(position))
 
-    def _insert_symbol(self, line_edit, symbol):
+    @staticmethod # Apply static method decorator
+    def _insert_symbol(line_edit, symbol_char): # Remove self, rename parameter
         cursor_pos = line_edit.cursorPosition()
-        text = line_edit.text()
-        line_edit.setText(text[:cursor_pos] + symbol + text[cursor_pos:])
-        line_edit.setCursorPosition(cursor_pos + len(symbol))
+        text_content = line_edit.text()
+        line_edit.setText(text_content[:cursor_pos] + symbol_char + text_content[cursor_pos:])
+        line_edit.setCursorPosition(cursor_pos + len(symbol_char))
 
-    def _update_variable_count(self, count):
+    def _update_variable_count(self, count_value):
         # Slot method called when the value of `self.count_spinbox` changes.
         # Parameters:
         #   count (int): The new value from the spinbox (the desired number of variables).
@@ -1406,14 +1406,14 @@ class VariableConfigWidget(QWidget):
         #          recreates the variable input fields, and signals that variables have changed.
         # Concepts: Slot, list manipulation, calling other methods to update UI and emit signals.
 
-        self.variable_count = count  # Update the internal count.
+        self.variable_count = count_value  # Update the internal count.
 
         # Adjust the self.variable_names list to match the new count.
         # If count is greater, append new default names (e.g., "var4", "var5").
-        while len(self.variable_names) < count:
+        while len(self.variable_names) < count_value:
             self.variable_names.append(f"var{len(self.variable_names) + 1}")
         # If count is smaller, truncate the list.
-        self.variable_names = self.variable_names[:count]
+        self.variable_names = self.variable_names[:count_value]
 
         self._create_variable_inputs()  # Re-generate the QLineEdit widgets for variable names.
         self._variables_updated()  # Call to validate names and emit the variablesChanged signal.
@@ -1426,7 +1426,7 @@ class VariableConfigWidget(QWidget):
         # Concepts: Signal emission, basic string validation (isidentifier), status bar updates (indirectly).
 
         # Get current names from all QLineEdit input fields.
-        current_names = self.get_variable_names()
+        current_names = [inp.text() for inp in self.variable_inputs]
         
         # Update internal list without enforcing validation (the IdentifierLineEdit already enforces valid identifiers)
         self.variable_names = current_names  # Update the internal list of names.
@@ -1518,6 +1518,8 @@ class ExpressionWidget(QWidget):
         # Emit initial signals
         self._expressions_updated()
         self._colors_updated()
+        
+        self.last_focused_input = None # Add this attribute
         
     def test_expressions(self, var_names):
         """
@@ -1702,6 +1704,7 @@ class ExpressionWidget(QWidget):
         
         # Clear the input fields list
         self.input_fields = []
+        self.last_focused_input = None # Reset when rebuilding
         
         # Create a UI row for each expression
         for idx, expr in enumerate(self.expressions):
@@ -1827,6 +1830,19 @@ class ExpressionWidget(QWidget):
                 spacer = QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 self.expressions_rows_layout.addSpacerItem(spacer)
 
+            # *** Add focus tracking ***
+            line_edit.focusInEvent = functools.partial(self._on_expression_focus, line_edit)
+            
+    def _on_expression_focus(self, line_edit, _event): # Renamed event to _event
+        """Store the line edit that gained focus."""
+        self.last_focused_input = line_edit
+        # Call original focusInEvent handler if needed (optional)
+        # QLineEdit.focusInEvent(line_edit, event)
+        
+    def get_last_focused_input(self):
+        """Return the last focused expression input field."""
+        return self.last_focused_input
+
     def _add_expression(self):
         # Slot method called when the "Add Expression" button is clicked.
         # Purpose: Adds a new default expression ("p or q") to the list and a new default color,
@@ -1854,91 +1870,45 @@ class ExpressionWidget(QWidget):
             # Show a warning message if the maximum number of expressions is reached.
             QMessageBox.warning(self, "Limit Reached", "Maximum of 5 expressions allowed.")
 
-    def _delete_expression(self, idx):
-        # Slot method called when a "Delete" button for a specific expression is clicked.
-        # Parameters:
-        #   idx (int): The index of the expression to delete.
-        # Purpose: Removes the expression and its corresponding color from the lists,
-        #          then rebuilds the UI and emits signals. Ensures at least one expression remains.
-        # Concepts: List manipulation (del), UI update, signal emission, QMessageBox for warning.
-        # Behavior: User clicks a "Delete" button, the corresponding expression row is removed if not the last one.
-
-        if len(self.expressions) > 1:  # Ensure at least one expression remains.
-            del self.expressions[idx]  # Remove expression at the given index.
-            if idx < len(self.expr_colors):  # Safety check before deleting color.
-                del self.expr_colors[idx]  # Remove corresponding color.
-
-            self._create_expression_inputs()  # Regenerate UI.
-            self._expressions_updated()  # Emit signal: expressions changed.
-            self._colors_updated()  # Emit signal: colors changed.
+    def _delete_expression(self, expr_index):
+        """Slot method called when a Delete button is clicked."""
+        if len(self.expressions) > 1:
+            del self.expressions[expr_index]
+            if expr_index < len(self.expr_colors):
+                del self.expr_colors[expr_index]
+            self.recreate_expressions()
         else:
-            # Show warning if user tries to delete the last remaining expression.
             QMessageBox.warning(self, "Action Not Allowed", "At least one expression is required.")
 
-    def _select_color(self, idx):
-        # Slot method called when a "Change Color" button for an expression is clicked.
-        # Parameters:
-        #   idx (int): The index of the expression whose color is to be changed.
-        # Purpose: Opens a QColorDialog to allow the user to pick a new color for the specified expression.
-        #          If a valid color is chosen, updates the color list, rebuilds the UI (to show new color swatch),
-        #          and emits the `expressionColorsChanged` signal.
-        # Concepts: QColorDialog, UI update, signal emission.
-        # Behavior: User clicks "Change Color", a color picker dialog appears. If a color is selected,
-        #           the swatch for that expression updates, and the change is stored.
-        """Open color dialog for expression"""
-        current_color = self.expr_colors[idx]  # Get the current color for initial dialog selection.
-        # QColorDialog.getColor() is a static method that shows the dialog and returns the selected QColor.
-        # It's modal, meaning it blocks interaction with other parts of the app until closed.
-        new_color = QColorDialog.getColor(current_color, self, f"Select Color for Expression {idx + 1}")
-
-        if new_color.isValid():  # Check if the user selected a color (and didn't cancel).
-            self.expr_colors[idx] = new_color  # Update the color in the list.
-            # Recreate UI inputs to reflect the new color in the color indicator label.
-            # A more optimized approach might be to find the specific QLabel for the color swatch
-            # and update its stylesheet directly, avoiding a full UI rebuild for this widget.
+    def _select_color(self, expr_index):
+        """Slot method called when a Change Color button is clicked."""
+        current_color = self.expr_colors[expr_index]
+        new_color = QColorDialog.getColor(current_color, self, f"Select Color for Expression {expr_index + 1}")
+        if new_color.isValid():
+            self.expr_colors[expr_index] = new_color
             self._create_expression_inputs()
-            self._colors_updated()  # Emit signal that colors have changed.
+            self._colors_updated()
 
-    def _validate_expression(self, text, line_edit_widget, idx):
-        # Slot method called when the text in an expression QLineEdit changes.
-        # Parameters:
-        #   text (str): The new text from the QLineEdit.
-        #   line_edit_widget (QLineEdit): The QLineEdit instance that emitted the signal.
-        #   idx (int): The index of the expression being edited.
-        # Purpose: Validates the syntax of the entered expression text using ExpressionEvaluator.
-        #          Updates the QLineEdit's style (e.g., background color) and tooltip to give feedback.
-        #          If valid, updates the expression in `self.expressions` and emits `expressionsChanged`.
-        # Concepts: Real-time validation, UI feedback (styling, tooltip), signal emission.
-        # Behavior: As user types in an expression field, its border/background might change and a tooltip
-        #           appears indicating if it's valid or describing an error.
-
-        # Update the stored expression string immediately, even if invalid
-        # This prevents losing user input during typing
-        if idx < len(self.expressions):
-            self.expressions[idx] = text
+    def _validate_expression(self, text, line_edit_widget, expr_index):
+        """Slot method called when the text in an expression QLineEdit changes."""
+        if expr_index < len(self.expressions):
+            self.expressions[expr_index] = text
         
-        # Only perform validation if there's actual text to validate
         if not text.strip():
-            # For empty expressions, show a neutral state
-            line_edit_widget.setStyleSheet(AppTheme.get_lineedit_stylesheet())  # Reset to default style
+            line_edit_widget.setStyleSheet(AppTheme.get_lineedit_stylesheet())
             line_edit_widget.setToolTip("Enter a logical expression")
             return
 
-        # Use ExpressionEvaluator to check if the expression is valid and safe.
         is_valid, message = ExpressionEvaluator.is_valid_expression(text)
 
         if is_valid:
-            # If valid, reset stylesheet (remove error styling) and set a positive tooltip.
-            line_edit_widget.setStyleSheet(AppTheme.get_lineedit_stylesheet())  # Back to default style
+            line_edit_widget.setStyleSheet(AppTheme.get_lineedit_stylesheet())
             line_edit_widget.setToolTip("Valid expression")
-            # Emit signal that expressions have changed (now that we have a valid expression)
             self._expressions_updated()
         else:
-            # If invalid, apply an error style (e.g., light red background) and set tooltip to the error message.
-            # Use a light red background to indicate error but still allow readability
-            line_edit_widget.setStyleSheet(
-                AppTheme.get_lineedit_stylesheet() + "background-color: rgba(255, 200, 200, 0.7);")  # Lighter, more transparent error style
-            line_edit_widget.setToolTip(message)
+            error_style = AppTheme.get_lineedit_stylesheet() + "background-color: rgba(255, 200, 200, 0.7);"
+            line_edit_widget.setStyleSheet(error_style)
+            line_edit_widget.setToolTip(f"Error: {message}")
 
     def _expressions_updated(self):
         # Helper method to emit the expressionsChanged signal.
@@ -1968,6 +1938,13 @@ class ExpressionWidget(QWidget):
         #   list[str]: The current list of expressions managed by this widget.
         # Connection: Called by TruthTableApp.generate_table to get expressions for the TruthTableModel.
         return self.expressions
+
+    def recreate_expressions(self):
+        # This method is called when an expression is deleted.
+        # It regenerates the expression input UI to reflect the current state of self.expressions and self.expr_colors.
+        self._create_expression_inputs()
+        self._expressions_updated()
+        self._colors_updated()
 
 
 class ExplanationWidget(QWidget):
@@ -2902,6 +2879,29 @@ class TruthTableApp(QMainWindow):
         self.setWindowTitle("Truth Table Educational Tool")
         self.setMinimumSize(1200, 800)
 
+        # Initialize attributes that will be defined in other methods
+        self.status_bar = None
+        self.floating_toolbar = None
+        self.table_view = None
+        self.table_model = None
+        self.variables_dock = None
+        self.variable_config = None
+        self.expressions_dock = None
+        self.expression_widget = None
+        self.learning_dock = None
+        self.explanation_widget = None
+        self.style_dock = None
+        self.style_editor = None
+        self.toolbar = None
+        self.vars_action = None
+        self.expr_action = None
+        self.learn_action = None
+        self.style_action = None
+        self.auto_generate = None
+        self.var_display_combo = None
+        self.expr_display_combo = None
+        self.row_order_combo = None
+
         # Apply futuristic styling
         FuturisticUI.set_futuristic_style(QApplication.instance())
         
@@ -3439,25 +3439,29 @@ class TruthTableApp(QMainWindow):
             self.table_model._generate_data()
             self.table_model.layoutChanged.emit()
     
-    def insert_symbol(self, symbol):
-        """Insert a symbol at the cursor position in the currently focused QLineEdit"""
-        focused_widget = QApplication.focusWidget()
+    def insert_symbol(self, symbol_char): # Renamed symbol parameter
+        """Insert a symbol at the cursor position in the last focused expression QLineEdit."""
+        # Get the last focused input from the ExpressionWidget
+        target_widget = self.expression_widget.get_last_focused_input()
         
-        if isinstance(focused_widget, QLineEdit):
+        if isinstance(target_widget, QLineEdit):
             # Get cursor position and text
-            pos = focused_widget.cursorPosition()
-            text = focused_widget.text()
+            pos = target_widget.cursorPosition()
+            text_content = target_widget.text() # Renamed text
             
             # Insert the symbol
-            focused_widget.setText(text[:pos] + symbol + text[pos:])
+            target_widget.setText(text_content[:pos] + symbol_char + text_content[pos:])
             
             # Move cursor after the inserted symbol
-            focused_widget.setCursorPosition(pos + len(symbol))
+            target_widget.setCursorPosition(pos + len(symbol_char))
+            
+            # Optionally set focus back to the widget after insertion
+            target_widget.setFocus()
             
             # Show message
-            self.status_bar.showMessage(f"Inserted symbol '{symbol}'", 2000)
+            self.status_bar.showMessage(f"Inserted symbol '{symbol_char}'", 2000)
         else:
-            self.status_bar.showMessage("Please click in an expression field first", 3000)
+            self.status_bar.showMessage("Please click in an expression field first to insert symbols", 3000)
     
     def update_step_evaluation(self):
         """Update the step-by-step evaluation in the explanation widget"""
@@ -3698,7 +3702,7 @@ class FloatingSymbolToolbar(QWidget):
                 }
             """)
             # Capture the symbol value in a lambda using default argument
-            btn.clicked.connect(lambda checked, s=symbol: self.symbolClicked.emit(s))
+            btn.clicked.connect(lambda checked, sym=symbol: self.symbolClicked.emit(sym))
             
             # Arrange buttons in 2 columns
             symbol_layout.addWidget(btn, row, col)

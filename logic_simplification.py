@@ -331,7 +331,7 @@ class KarnaughMap:
         
         return grid
     
-    def compute_groupings(self) -> List[Tuple[List[Tuple[int, int]], str]]:
+    def compute_groupings(self) -> List[Tuple[List[Tuple[int, int]], str, str]]:
         """
         Compute the prime implicant groupings on the Karnaugh map.
         
@@ -339,6 +339,7 @@ class KarnaughMap:
             List of tuples, each containing:
             - List of cell coordinates (row, col) in the group
             - The simplified term that this group represents
+            - The prime implicant pattern string (e.g., '1-1')
         """
         # Use the Quine-McCluskey algorithm to find prime implicants
         self.prime_implicants = self.qm.find_prime_implicants()
@@ -368,7 +369,7 @@ class KarnaughMap:
                     term_parts.append(self.variables[i])
             
             term = " & ".join(term_parts) if term_parts else "1"
-            groupings.append((cells, term))
+            groupings.append((cells, term, pi))
             
         return groupings
     
@@ -507,7 +508,7 @@ def generate_karnaugh_map_html(k_map: KarnaughMap) -> str:
                 
             # Calculate cell's group data to allow CSS highlighting
             group_data = []
-            for i, (cells, term) in enumerate(groupings):
+            for i, (cells, term, pi_pattern) in enumerate(groupings):
                 if (r, c) in cells:
                     is_essential = any(pi in essential_pis for pi in term)
                     group_type = 'essential' if is_essential else 'prime'
@@ -523,7 +524,7 @@ def generate_karnaugh_map_html(k_map: KarnaughMap) -> str:
     html.append('<div class="legend">')
     html.append('<h4>Prime Implicants:</h4>')
     html.append('<ul>')
-    for i, (_, term) in enumerate(groupings):
+    for i, (_, term, pi_pattern) in enumerate(groupings):
         is_essential = any(pi in essential_pis for pi in term)
         legend_class = 'essential-pi' if is_essential else 'prime-implicant'
         html.append(f'<li class="{legend_class}" data-group-id="{i}">{term} {"(Essential)" if is_essential else ""}</li>')
