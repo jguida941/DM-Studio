@@ -1,0 +1,60 @@
+
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .karnaugh-map { margin-bottom: 30px; }
+                .k-map { border-collapse: collapse; margin: 20px 0; }
+                .k-map th, .k-map td { border: 1px solid #888; padding: 15px; text-align: center; }
+                .k-map th { background-color: #eee; }
+                .minterm { background-color: #d0ffd0; }
+                .maxterm { background-color: #ffd0d0; }
+                .dont-care { background-color: #e0e0e0; }
+                [data-group-0="prime"] { background-color: #90EE90; }
+                [data-group-0="essential"] { background-color: #FF00FF; }
+                [data-group-1="prime"] { background-color: #90CAF9; }
+                [data-group-1="essential"] { background-color: #AB47BC; }
+                .legend { margin-top: 20px; }
+                .essential-pi { color: #FF00FF; font-weight: bold; }
+                .prime-implicant { color: #1E90FF; }
+            </style>
+        </head>
+        <body>
+            <h1>Karnaugh Map Test for p AND r</h1>
+            <p>This shows the Karnaugh map for the expression p AND r with minterms [5, 7]</p>
+            <p>The highlighted cells should be in row p=1 and in columns where r=1 (regardless of q)</p>
+        <div class="karnaugh-map">
+<table class="k-map">
+<tr><th></th>
+<th>q,r=00</th>
+<th>q,r=01</th>
+<th>q,r=11</th>
+<th>q,r=10</th>
+</tr>
+<tr><th>p=0</th>
+<td class="maxterm" >0</td>
+<td class="maxterm" >0</td>
+<td class="maxterm" >0</td>
+<td class="maxterm" >0</td>
+</tr>
+<tr><th>p=1</th>
+<td class="maxterm" >0</td>
+<td class="minterm" data-group-0="prime">1</td>
+<td class="minterm" >1</td>
+<td class="maxterm" data-group-0="prime">0</td>
+</tr>
+</table>
+<div class="legend">
+<h4>Prime Implicants:</h4>
+<ul>
+<li class="prime-implicant" data-group-id="0">p & r </li>
+</ul>
+<div class="simplified">
+<h4>Simplified Expression:</h4>
+<p>p & r</p>
+</div>
+</div>
+</div>
+        </body>
+        </html>
+        
