@@ -1,5 +1,5 @@
 # DM-Studio: Truth Table & Karnaugh Map Educational Tool
-# Still need to polish UI. But logic is down for ths most part. Feel free to contribute.  
+# Still need to polish UI. But logic is down for the most part. Feel free to contribute.  
 
 A comprehensive educational tool for Boolean logic, truth tables, and Karnaugh maps, designed to help students understand digital logic concepts.
 
